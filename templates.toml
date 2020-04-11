@@ -1,0 +1,12 @@
+[templates]                         
+about       = "MrHalzy is working on LegaSea, a multiplayer game that is a blend of Don't Starve and Sunless Seas. The server is written in Rust and the Client is in Godot."
+discord     = "https://discord.gg/bNcgtCa"
+dotfiles    = "https://github.com/halzy/dotfiles/"
+font        = "Fira Code - https://github.com/tonsky/FiraCode"
+godotrust   = "https://github.com/GodotNativeTools/godot-rust"
+hello       = "Ahoy, ${name}!"
+inventory   = "You have ${count} shiny pebbles!"
+today       = "Working on Forge, the Biome management portal for LegaSea. It is using warp and tera."
+os          = "Currently using OSX, but I'm more of a BSD fan (FreeBSD & DragonflyBSD, using Alacritty, TMUX, and NeoVim"
+theme       = "The vim theme is challenger-deep: https://github.com/challenger-deep-theme/vim"
+coc         = "Using CoC with Rust Analyzer: https://github.com/neoclide/coc.nvim https://github.com/rust-analyzer/rust-analyzer"

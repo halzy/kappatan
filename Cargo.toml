@@ -1,0 +1,19 @@
+[package]
+name = "kappatan"
+version = "0.1.0"
+authors = ["Benjamin Halsted <bhalsted@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+alto_logger = "0.1.2"
+anyhow      = "1.0.28"
+dotenv      = "0.15.0"
+futures     = "0.3"
+log         = { version = "0.4" }
+serde       = { version = "1.0.106", features = ["derive"] }
+template    = { path="../template", features = ["toml"]}
+thiserror   = "1.0.14"
+tokio       = { version="0.2", default-features=false, features=["full", "macros"] }
+toml        = { version = "0.5.6", features = ["preserve_order"] }
+# twitchchat  = { path="../twitchchat" , default-features=false, features=["tokio_rustls"] }
+twitchchat  = { version="0.10.0" , default-features=false, features=["async","tokio_rustls"] }
