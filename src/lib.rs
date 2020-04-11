@@ -69,25 +69,6 @@ where
             },
             _ => {}
         }
-        /*
-        match &*msg.data {
-            "!hello" => {
-                let resp = format!("hello {}!", msg.name);
-                self.writer.privmsg(&msg.channel, &resp).await.unwrap();
-            }
-            "!uptime" => {
-                let dur = std::time::Instant::now() - self.start;
-                let resp = format!("I've been running for.. {:.2?}.", dur);
-                self.writer.privmsg(&msg.channel, &resp).await.unwrap();
-            }
-            "!quit" => {
-                // this'll stop the runner (causing its future to return Ok(Status::Canceled))
-                self.control.stop();
-                return false; // to stop the 'Bot'
-            }
-            _ => {}
-        };
-        */
         true // to keep the 'Bot' running
     }
 
@@ -97,6 +78,10 @@ where
     {
         let data = &message.data[1..];
         match data.split(" ").next() {
+            Some("quit") if message.is_broadcaster() => {
+                self.control.stop();
+                Ok(())
+            }
             Some(command) => {
                 log::debug!("Command: {:?}", command);
 
@@ -124,6 +109,12 @@ where
                     variables = variables.with("name", &name);
                 }
 
+                let uptime = std::time::Instant::now() - self.start;
+                let uptime = as_readable_time(&uptime);
+                if keys.remove("uptime") {
+                    variables = variables.with("uptime", &uptime);
+                }
+
                 let template = Template::parse(&template_string, Opts::default())?;
 
                 let variables = variables.build();
@@ -134,4 +125,38 @@ where
             _ => Err(KappaError::BadInput(data.to_string())),
         }
     }
+}
+
+fn as_readable_time(dur: &std::time::Duration) -> String {
+    const TABLE: [(&str, u64); 4] = [
+        ("days", 86400),
+        ("hours", 3600),
+        ("minutes", 60),
+        ("seconds", 1),
+    ];
+
+    fn pluralize(s: &&str, n: u64) -> String {
+        format!("{} {}", n, if n > 1 { s } else { &s[..s.len() - 1] })
+    }
+
+    let mut time = vec![];
+    let mut secs = dur.as_secs();
+    for (name, d) in &TABLE {
+        let div = secs / d;
+        if div > 0 {
+            time.push(pluralize(name, div));
+            secs -= d * div;
+        }
+    }
+
+    let len = time.len();
+    if len > 1 {
+        if len > 2 {
+            for e in &mut time.iter_mut().take(len - 2) {
+                e.push_str(",")
+            }
+        }
+        time.insert(len - 1, "and".into());
+    }
+    time.join(" ")
 }

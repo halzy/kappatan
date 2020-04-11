@@ -3,8 +3,6 @@ use kappatan::Bot;
 use std::env;
 use std::path::PathBuf;
 
-use futures::prelude::*;
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Load the config
@@ -16,52 +14,57 @@ async fn main() -> anyhow::Result<()> {
     )
     .unwrap();
 
-    log::trace!("Loading environment");
-    let nick = env::var("TWITCH_NICK")?;
-    let oauth = env::var("TWITCH_OAUTH")?;
-    let channel = env::var("TWITCH_CHANNEL")?;
-    let templates: PathBuf = env::var("TEMPLATES_FILE")?.parse()?;
+    loop {
+        log::info!("Starting!");
 
-    // Template resolver here
-    let template_file = template::FileStore::new(templates, template::load_toml)?;
-    let resolver = template::Resolver::new(template_file)?;
+        log::trace!("Loading environment");
+        let nick = env::var("TWITCH_NICK")?;
+        let oauth = env::var("TWITCH_OAUTH")?;
+        let channel = env::var("TWITCH_CHANNEL")?;
+        let templates: PathBuf = env::var("TEMPLATES_FILE")?.parse()?;
 
-    // make a dispatcher (this is how you 'subscribe' to events)
-    // this is clonable, so you can send it to other tasks/threasd
-    let dispatcher = twitchchat::Dispatcher::new();
+        // Template resolver here
+        let template_file = template::FileStore::new(templates, template::load_toml)?;
+        let resolver = template::Resolver::new(template_file)?;
 
-    // make a new runner
-    // control allows you to stop the runner, and gives you access to an async. encoder (writer)
-    let (runner, control) =
-        twitchchat::Runner::new(dispatcher.clone(), twitchchat::RateLimit::default());
+        // make a dispatcher (this is how you 'subscribe' to events)
+        // this is clonable, so you can send it to other tasks/threasd
+        let dispatcher = twitchchat::Dispatcher::new();
 
-    let bot = Bot::new(control, resolver);
-    let bot = bot.run(dispatcher, channel);
+        // make a new runner
+        // control allows you to stop the runner, and gives you access to an async. encoder (writer)
+        let (runner, control) =
+            twitchchat::Runner::new(dispatcher.clone(), twitchchat::RateLimit::default());
 
-    // connect via TCP with TLS with this nick and oauth
-    let conn = twitchchat::connect_easy_tls(&nick, &oauth).await.unwrap();
+        let bot = Bot::new(control, resolver);
+        let bot = bot.run(dispatcher, channel);
 
-    let done = runner.run(conn);
+        // connect via TCP with TLS with this nick and oauth
+        let conn = twitchchat::connect_easy_tls(&nick, &oauth).await.unwrap();
 
-    tokio::select! {
-        _ = bot => { eprintln!("done running the bot") }
-        status = done => {
-            match status {
-                Ok(twitchchat::Status::Timeout) => {
-                    log::warn!("Connection to server timed out!");
-                }
-                Ok(twitchchat::Status::Eof) => {
-                    log::warn!("Connection closed. Shutting down.");
-                }
-                Ok(twitchchat::Status::Canceled) => {
-                    log::warn!("Shutting down.");
-                }
-                Err(err) => {
-                    log::warn!("Error, shutting down. {:?}", err);
+        let done = runner.run(conn);
+
+        tokio::select! {
+            _ = bot => { eprintln!("done running the bot") }
+            status = done => {
+                match status {
+                    Ok(twitchchat::Status::Timeout) => {
+                        log::warn!("Connection to server timed out!");
+                    }
+                    Ok(twitchchat::Status::Eof) => {
+                        log::warn!("Connection closed.");
+                    }
+                    Ok(twitchchat::Status::Canceled) => {
+                        log::warn!("Shutting down.");
+                        return Ok(())
+                    }
+                    Err(err) => {
+                        log::warn!("Error. {:?}", err);
+                    }
                 }
             }
         }
+        log::info!("Restarting, waiting 1 minute.");
+        std::thread::sleep(std::time::Duration::from_secs(60));
     }
-
-    Ok(())
 }

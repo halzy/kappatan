@@ -10,3 +10,4 @@ today       = "Working on Forge, the Biome management portal for LegaSea. It is 
 os          = "Currently using OSX, but I'm more of a BSD fan (FreeBSD & DragonflyBSD, using Alacritty, TMUX, and NeoVim"
 theme       = "The vim theme is challenger-deep: https://github.com/challenger-deep-theme/vim"
 coc         = "Using CoC with Rust Analyzer: https://github.com/neoclide/coc.nvim https://github.com/rust-analyzer/rust-analyzer"
+uptime      = "kappatan has been up for ${uptime}!"
