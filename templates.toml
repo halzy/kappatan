@@ -1,4 +1,4 @@
-[templates]                         
+[mrhalzy]                         
 about       = "MrHalzy is working on LegaSea, a multiplayer game that is a blend of Don't Starve and Sunless Seas. The server is written in Rust and the Client is in Godot."
 discord     = "https://discord.gg/bNcgtCa"
 dotfiles    = "https://github.com/halzy/dotfiles/"

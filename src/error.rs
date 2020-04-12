@@ -6,9 +6,12 @@ pub enum KappaError {
     #[error("Missing template: {0}")]
     TemplateMissing(String),
 
-    #[error("TemplateError: {0}")]
-    TemplateError(#[from] template::markings::Error),
-
     #[error("TwitchChat Error: {0}")]
     TwitchChatError(#[from] twitchchat::Error),
+
+    #[error("Markings: {0}")]
+    MarkingsError(#[from] markings::Error),
+
+    #[error("DB Error: {0}")]
+    DbError(#[from] sqlx::Error),
 }
