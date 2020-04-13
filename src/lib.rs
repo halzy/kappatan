@@ -82,6 +82,24 @@ impl Bot {
                 self.control.stop();
                 Ok(())
             }
+            (Some("unset"), Some(command)) if message.is_broadcaster() => {
+                let channel = &message.channel[1..];
+                match sqlx::query_file!("sql/unset_template.sql", channel, command)
+                    .execute(&self.db)
+                    .await
+                {
+                    Ok(_) => {
+                        let response = format!("'{}' has been unset.", command);
+                        self.writer.privmsg(&message.channel, response).await?;
+                    }
+                    Err(err) => {
+                        log::warn!("Error saving template: {:?}", err);
+                        let response = format!("Was not able to unset '{}'", command);
+                        self.writer.privmsg(&message.channel, response).await?;
+                    }
+                }
+                Ok(())
+            }
             (Some("set"), Some(command)) if message.is_broadcaster() => {
                 match iter.next() {
                     Some(template) => {
@@ -92,12 +110,13 @@ impl Bot {
                             .await
                         {
                             Ok(_) => {
-                                let response = format!("Set {}", command);
+                                let response =
+                                    format!("'{}' has been set to: {}", command, template);
                                 self.writer.privmsg(&message.channel, response).await?;
                             }
                             Err(err) => {
                                 log::warn!("Error saving template: {:?}", err);
-                                let response = format!("Could not set {}", command);
+                                let response = format!("Could not template for '{}'", command);
                                 self.writer.privmsg(&message.channel, response).await?;
                             }
                         }
@@ -107,14 +126,6 @@ impl Bot {
                         self.writer.privmsg(&message.channel, response).await?;
                     }
                 }
-                Ok(())
-            }
-            (Some("list"), None) if message.is_broadcaster() => {
-                // List commands for this channel
-                Ok(())
-            }
-            (Some("delete"), None) if message.is_broadcaster() => {
-                // delete command for this channel
                 Ok(())
             }
             (Some(command), None) => {
@@ -145,8 +156,8 @@ impl Bot {
                     variables = variables.with("name", &name);
                 }
 
-                let uptime = std::time::Instant::now() - self.start;
                 if keys.remove("uptime") {
+                    let uptime = std::time::Instant::now() - self.start;
                     let uptime = as_readable_time(&uptime);
                     variables = variables.with("uptime", &uptime);
                 }
