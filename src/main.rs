@@ -5,19 +5,15 @@ use std::env;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Load the config
-    dotenv::from_filename(".env.production")?;
+    simple_env_load::load_env_from(&[".env", ".env.production"]);
 
-    alto_logger::init(
-        alto_logger::Style::MultiLine,
-        alto_logger::ColorConfig::default(),
-    )
-    .unwrap();
+    alto_logger::init_term_logger()?;
 
     let nick = env::var("TWITCH_NICK")?;
     let oauth = env::var("TWITCH_OAUTH")?;
     let channel = env::var("TWITCH_CHANNEL")?;
     let database = env::var("DATABASE_URL")?;
-    eprintln!("{}", &database);
+    eprintln!("{}", &channel);
 
     let pool = initialize_db_pool(&database).await?;
 
@@ -39,7 +35,17 @@ async fn main() -> anyhow::Result<()> {
         let bot = bot.run(dispatcher, &channel);
 
         // connect via TCP with TLS with this nick and oauth
-        let conn = twitchchat::connect_easy_tls(&nick, &oauth).await.unwrap();
+        let conn = match twitchchat::connect_easy_tls(&nick, &oauth).await {
+            Ok(conn) => conn,
+            Err(err) => {
+                log::error!(
+                    "Could not connect, waiting 60 seconds and trying again. {}",
+                    err
+                );
+                tokio::time::delay_for(std::time::Duration::from_secs(60)).await;
+                continue;
+            }
+        };
 
         let done = runner.run(conn);
 

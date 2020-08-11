@@ -6,23 +6,20 @@ edition = "2018"
 build = "build.rs"
 
 [dependencies]
-alto_logger = "0.1"
+alto_logger = { version = "0.3", features=["time"] }
 anyhow      = "1.0"
-dotenv      = "0.15"
 futures     = "0.3"
 log         = { version = "0.4" }
-serde       = { version = "1.0", features = ["derive"] }
-# template    = { path="../template", features = ["toml"]}
-# template = { git = "https://github.com/museun/template.git", features = ["toml"] }
 markings    = "0.4.0"
+serde       = { version = "1.0", features = ["derive"] }
+simple_env_load = "0.1.0"
+sqlx = { version = "0.3", default-features = false, features = ["macros", "sqlite", "runtime-tokio"] }
 thiserror   = "1.0"
 tokio       = { version="0.2", default-features=false, features=["full", "macros"] }
 toml        = { version = "0.5", features = ["preserve_order"] }
-# twitchchat  = { path="../twitchchat" , default-features=false, features=["tokio_rustls"] }
 twitchchat  = { version="0.10" }
-sqlx = { version = "0.3", default-features = false, features = ["macros", "sqlite", "runtime-tokio"] }
 
 [build-dependencies]
-dotenv      = "0.15"
+simple_env_load = "0.1.0"
 sqlx        = { version = "0.3", default-features = false, features = ["macros", "sqlite", "runtime-tokio"] }
 tokio       = { version = "0.2", features = ["rt-core"] }

@@ -12,6 +12,11 @@ struct TemplateQuery {
     template: String,
 }
 
+#[derive(Debug)]
+struct Points {
+    points: i32,
+}
+
 pub struct Bot {
     db: sqlx::SqlitePool,
     writer: twitchchat::Writer,
@@ -128,48 +133,117 @@ impl Bot {
                 }
                 Ok(())
             }
+            (Some("give"), Some(user)) if message.is_broadcaster() => {
+                match iter.next() {
+                    Some(value) => {
+                        // Fetch numeric user ID from API
+                        let user_id = 75244893_i64;
+                        let value: i64 = match value.parse() {
+                            Ok(value) => value,
+                            Err(err) => {
+                                log::warn!("Could not parse points: {:0}", err);
+                                let response = format!("Could not give '{}' to '{}'", value, user);
+                                self.writer.privmsg(&message.channel, response).await?;
+                                return Ok(());
+                            }
+                        };
+
+                        let channel = &*message.channel;
+                        match sqlx::query_file!("sql/give_points.sql", channel, user_id, value)
+                            .execute(&self.db)
+                            .await
+                        {
+                            Ok(_) => {
+                                let _ = self
+                                    .do_template(
+                                        &message.channel,
+                                        &"points",
+                                        &user,
+                                        Some(user_id as u64),
+                                    )
+                                    .await;
+                            }
+                            Err(err) => {
+                                log::warn!("Error giving points: {:?}", err);
+                                let response = format!("Could not give '{}' to '{}'", value, user);
+                                self.writer.privmsg(&message.channel, response).await?;
+                            }
+                        }
+                    }
+                    None => {
+                        let response = "usage: !give <user> <number>";
+                        self.writer.privmsg(&message.channel, response).await?;
+                    }
+                }
+
+                Ok(())
+            }
             (Some(command), None) => {
-                log::debug!("Command: {:?}", command);
+                self.do_template(&message.channel, &command, &message.name, message.user_id())
+                    .await?;
 
-                // Match templates that need 'generic'
-                let channel = &message.channel[1..];
-                let template_query =
-                    sqlx::query_file_as!(TemplateQuery, "sql/get_template.sql", channel, command)
-                        .fetch_one(&self.db)
-                        .await?;
-
-                let mut keys: HashSet<&str> = Template::find_keys(&template_query.template)
-                    .map(|keys| keys.into_iter().collect())?;
-
-                // If there are no keys, return the template string
-                if keys.is_empty() {
-                    self.writer
-                        .privmsg(&message.channel, &template_query.template)
-                        .await
-                        .unwrap();
-                    return Ok(());
-                }
-
-                let mut variables = Args::new();
-                if keys.remove("name") {
-                    let name = message.display_name().unwrap_or_else(|| &message.name);
-                    variables = variables.with("name", &name);
-                }
-
-                if keys.remove("uptime") {
-                    let uptime = std::time::Instant::now() - self.start;
-                    let uptime = as_readable_time(&uptime);
-                    variables = variables.with("uptime", &uptime);
-                }
-
-                let template = Template::parse(&template_query.template, Opts::default())?;
-
-                let response = template.apply(&variables)?;
-                self.writer.privmsg(&message.channel, &response).await?;
                 Ok(())
             }
             _ => Err(KappaError::BadInput(data.to_string())),
         }
+    }
+
+    async fn do_template(
+        &mut self,
+        channel: &str,
+        command: &str,
+        user_name: &str,
+        user_id: Option<u64>,
+    ) -> Result<(), KappaError> {
+        log::debug!("Command: {:?}", command);
+
+        // Match templates that need 'generic'
+        let template_channel = &channel[1..];
+        let template_query = sqlx::query_file_as!(
+            TemplateQuery,
+            "sql/get_template.sql",
+            template_channel,
+            command
+        )
+        .fetch_one(&self.db)
+        .await?;
+
+        let mut keys: HashSet<&str> =
+            Template::find_keys(&template_query.template).map(|keys| keys.into_iter().collect())?;
+
+        // If there are no keys, return the template string
+        if keys.is_empty() {
+            self.writer
+                .privmsg(&channel, &template_query.template)
+                .await
+                .unwrap();
+            return Ok(());
+        }
+
+        let mut variables = Args::new();
+        if keys.remove("name") {
+            variables = variables.with("name", &user_name);
+        }
+
+        if keys.remove("uptime") {
+            let uptime = std::time::Instant::now() - self.start;
+            let uptime = as_readable_time(&uptime);
+            variables = variables.with("uptime", &uptime);
+        }
+
+        if keys.remove("points") && user_id.is_some() {
+            let user_id = user_id.unwrap() as i64;
+            let points = sqlx::query_file_as!(Points, "sql/get_points.sql", channel, user_id)
+                .fetch_one(&self.db)
+                .await?;
+            variables = variables.with("points", &points.points);
+        }
+
+        let template = Template::parse(&template_query.template, Opts::default())?;
+
+        let response = template.apply(&variables)?;
+        self.writer.privmsg(&channel, &response).await?;
+        Ok(())
     }
 }
 
