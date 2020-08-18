@@ -178,6 +178,36 @@ impl Bot {
 
                 Ok(())
             }
+            (Some("commands"), None) => {
+                let channel = &message.channel[1..];
+                match sqlx::query_file!("sql/list_commands.sql", channel)
+                    .fetch_all(&self.db)
+                    .await
+                {
+                    Ok(value) => {
+                        let commands = value
+                            .iter()
+                            .map(|record| record.command.as_ref())
+                            .collect::<Vec<&str>>()
+                            .join(", !");
+
+                        self.writer
+                            .privmsg(
+                                &message.channel,
+                                format!("Currently available commands: !{}", commands),
+                            )
+                            .await?;
+                        Ok(())
+                    }
+                    Err(err) => {
+                        log::warn!("Error fetching the list of commands: {:?}", err);
+                        self.writer
+                            .privmsg(&message.channel, "Could not fetch the list of commands")
+                            .await?;
+                        Ok(())
+                    }
+                }
+            }
             (Some(command), None) => {
                 self.do_template(&message.channel, &command, &message.name, message.user_id())
                     .await?;
