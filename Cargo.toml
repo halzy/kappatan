@@ -16,7 +16,6 @@ simple_env_load = "0.1.0"
 sqlx = { version = "0.3", default-features = false, features = ["macros", "sqlite", "runtime-tokio"] }
 thiserror   = "1.0"
 tokio       = { version="0.2", default-features=false, features=["full", "macros"] }
-toml        = { version = "0.5", features = ["preserve_order"] }
 twitchchat  = { version="0.10" }
 
 [build-dependencies]

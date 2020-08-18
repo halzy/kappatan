@@ -255,10 +255,10 @@ impl Bot {
             variables = variables.with("name", &user_name);
         }
 
-        if keys.remove("uptime") {
+        if keys.remove("botuptime") {
             let uptime = std::time::Instant::now() - self.start;
             let uptime = as_readable_time(&uptime);
-            variables = variables.with("uptime", &uptime);
+            variables = variables.with("botuptime", &uptime);
         }
 
         if keys.remove("points") && user_id.is_some() {
