@@ -2,11 +2,13 @@ use super::command::Command;
 use crate::error::Result;
 
 impl super::Commands {
+    /// !quit
     pub async fn quit(&mut self, _command: &Command<'_>) -> Result<()> {
         self.state.quit.clone().notify().await;
         Ok(())
     }
 
+    /// !unset cmd
     pub async fn unset(&mut self, command: &Command<'_>, user_cmd: &str) -> Result<()> {
         let channel = command.channel;
         match sqlx::query_file!("sql/unset_template.sql", channel, user_cmd)
@@ -25,6 +27,7 @@ impl super::Commands {
         }
     }
 
+    /// !set cmd <template here>
     pub async fn set(
         &mut self,
         command: &Command<'_>,
@@ -54,6 +57,7 @@ impl super::Commands {
         }
     }
 
+    /// !give user amount
     pub async fn give(
         &mut self,
         command: &Command<'_>,

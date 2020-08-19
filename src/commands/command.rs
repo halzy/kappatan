@@ -1,13 +1,19 @@
 use twitchchat::messages::Privmsg;
 
+/// A parsed !command
 pub struct Command<'a> {
+    /// The command name
     pub cmd: &'a str,
+    /// Optional args
     pub args: Option<&'a str>,
+    /// Associated msg
     pub msg: &'a Privmsg<'a>,
+    /// 'Normalized' channel (e.g. # removed)
     pub channel: &'a str,
 }
 
 impl<'a> Command<'a> {
+    /// Attempts parse the command from this privmsg
     pub fn parse(msg: &'a Privmsg<'a>) -> Option<Command<'a>> {
         const TRIGGER: &str = "!";
 

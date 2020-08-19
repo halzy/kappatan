@@ -15,6 +15,7 @@ struct Points {
 }
 
 impl super::Commands {
+    /// '!commands'
     pub async fn list_commands(&mut self, command: &Command<'_>) -> Result<()> {
         let channel = command.channel;
         let value = match sqlx::query_file!("sql/list_commands.sql", channel)
@@ -40,6 +41,7 @@ impl super::Commands {
         )
     }
 
+    /// !<user_cmd>
     pub async fn do_template(
         &mut self,
         command: &Command<'_>,
