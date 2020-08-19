@@ -1,6 +1,7 @@
 use kappatan::Bot;
 
 use std::env;
+use twitchchat::UserConfig;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -13,62 +14,33 @@ async fn main() -> anyhow::Result<()> {
     let oauth = env::var("TWITCH_OAUTH")?;
     let channel = env::var("TWITCH_CHANNEL")?;
     let database = env::var("DATABASE_URL")?;
-    eprintln!("{}", &channel);
+    eprintln!("our channel: {}", &channel);
+
+    let channels = &[channel];
 
     let pool = initialize_db_pool(&database).await?;
 
     loop {
         log::info!("Starting!");
-
         log::trace!("Loading environment");
 
-        // make a dispatcher (this is how you 'subscribe' to events)
-        // this is clonable, so you can send it to other tasks/threasd
-        let dispatcher = twitchchat::Dispatcher::new();
+        let user_config = UserConfig::builder()
+            .name(&nick)
+            .token(&oauth)
+            .enable_all_capabilities()
+            .build()?;
 
-        // make a new runner
-        // control allows you to stop the runner, and gives you access to an async. encoder (writer)
-        let (runner, control) =
-            twitchchat::Runner::new(dispatcher.clone(), twitchchat::RateLimit::default());
-
-        let bot = Bot::create(control, pool.clone())?;
-        let bot = bot.run(dispatcher, &channel);
-
-        // connect via TCP with TLS with this nick and oauth
-        let conn = match twitchchat::connect_easy_tls(&nick, &oauth).await {
-            Ok(conn) => conn,
-            Err(err) => {
-                log::error!(
-                    "Could not connect, waiting 60 seconds and trying again. {}",
-                    err
-                );
-                tokio::time::delay_for(std::time::Duration::from_secs(60)).await;
-                continue;
+        match Bot::run_to_completion(pool.clone(), &user_config, channels).await {
+            Ok(true) => break Ok(()),
+            Ok(false) => {
+                // we should restart
             }
-        };
-
-        let done = runner.run(conn);
-
-        tokio::select! {
-            _ = bot => { eprintln!("done running the bot") }
-            status = done => {
-                match status {
-                    Ok(twitchchat::Status::Timeout) => {
-                        log::warn!("Connection to server timed out!");
-                    }
-                    Ok(twitchchat::Status::Eof) => {
-                        log::warn!("Connection closed.");
-                    }
-                    Ok(twitchchat::Status::Canceled) => {
-                        log::warn!("Shutting down.");
-                        return Ok(())
-                    }
-                    Err(err) => {
-                        log::warn!("Error. {:?}", err);
-                    }
-                }
+            Err(err) => {
+                // we should restart
+                log::error!("ran into an error: {}", err)
             }
         }
+
         log::info!("Restarting, waiting 1 minute.");
         tokio::time::delay_for(std::time::Duration::from_secs(60)).await;
     }
