@@ -18,3 +18,5 @@ pub enum KappaError {
     #[error("DB Error: {0}")]
     DbError(#[from] sqlx::Error),
 }
+
+pub type Result<T> = ::std::result::Result<T, KappaError>;
