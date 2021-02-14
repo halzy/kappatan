@@ -7,7 +7,10 @@ pub enum KappaError {
     TemplateMissing(String),
 
     #[error("TwitchChat Error: {0}")]
-    TwitchChatError(#[from] twitchchat::Error),
+    TwitchChatError(#[from] twitchchat::runner::Error),
+
+    #[error("I/O: {0}")]
+    Io(#[from] std::io::Error),
 
     #[error("Markings: {0}")]
     MarkingsError(#[from] markings::Error),
@@ -15,3 +18,5 @@ pub enum KappaError {
     #[error("DB Error: {0}")]
     DbError(#[from] sqlx::Error),
 }
+
+pub type Result<T> = ::std::result::Result<T, KappaError>;
